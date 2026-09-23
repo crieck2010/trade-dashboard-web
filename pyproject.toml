@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trade-dashboard-web"
+version = "0.1.0"
+description = "Dependency-free web dashboard for the trade-suite: backtest lab, strategy catalog, agent desk, risk review"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "crieck2010" }]
+requires-python = ">=3.10"
+keywords = ["trading", "dashboard", "backtesting", "web"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Office/Business :: Financial",
+]
+
+[project.scripts]
+trade-dashboard-web = "trade_dashboard_web.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/crieck2010/trade-dashboard-web"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+trade_dashboard_web = ["web/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

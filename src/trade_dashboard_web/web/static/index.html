@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>trade-dashboard-web</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <h1>trade-dashboard-web</h1>
+  <nav id="tabs">
+    <button data-tab="backtest" class="active">Backtest Lab</button>
+    <button data-tab="strategies">Strategies</button>
+    <button data-tab="desk">Agent Desk</button>
+    <button data-tab="risk">Risk</button>
+    <button data-tab="data">Data</button>
+  </nav>
+</header>
+<main>
+  <section id="tab-backtest" class="tab active">
+    <div class="card form">
+      <label>Strategy <select id="bt-strategy"></select></label>
+      <label>Symbols (comma-separated) <input id="bt-symbols" value="SPY, AAPL"></label>
+      <label>Source <select id="bt-source"></select></label>
+      <label>Params (JSON) <input id="bt-params" value="{}" spellcheck="false"></label>
+      <label>Cash <input id="bt-cash" type="number" value="100000"></label>
+      <button id="bt-run">Run backtest</button>
+    </div>
+    <div id="bt-error" class="error"></div>
+    <div class="card"><h3>Equity curve</h3><div id="bt-chart"></div></div>
+    <div class="card"><h3>Metrics</h3><div id="bt-metrics" class="metrics"></div></div>
+    <div class="card"><h3>Trades</h3><div id="bt-trades" class="tablewrap"></div></div>
+  </section>
+
+  <section id="tab-strategies" class="tab">
+    <div id="strat-list" class="cards"></div>
+  </section>
+
+  <section id="tab-desk" class="tab">
+    <div class="card form">
+      <label>Symbols (comma-separated) <input id="desk-symbols" value="SPY, AAPL, MSFT, BTC-USD"></label>
+      <label>Source <select id="desk-source"></select></label>
+      <label>Equity <input id="desk-equity" type="number" value="100000"></label>
+      <button id="desk-run">Run desk</button>
+    </div>
+    <div id="desk-error" class="error"></div>
+    <div class="card"><h3>Report</h3><pre id="desk-summary"></pre></div>
+    <div class="card"><h3>Briefs &amp; ideas</h3><div id="desk-briefs"></div></div>
+    <div class="card"><h3>Allocations</h3><div id="desk-allocs" class="tablewrap"></div></div>
+    <div class="card"><h3>Vetoes</h3><div id="desk-vetoes" class="tablewrap"></div></div>
+  </section>
+
+  <section id="tab-risk" class="tab">
+    <div class="card"><h3>Available limits</h3><div id="risk-limits" class="tablewrap"></div></div>
+    <div class="card form">
+      <label>Limits JSON <span class="hint">[[name, params], ...]</span>
+        <textarea id="risk-limits-json" rows="4" spellcheck="false">[["symbol_blocklist", {"symbols": []}], ["max_position_notional", {"max_pct": 0.25}], ["max_gross_exposure", {"max_pct": 1.0}]]</textarea></label>
+      <label>Orders JSON <span class="hint">[{symbol, side, quantity, price}]</span>
+        <textarea id="risk-orders-json" rows="4" spellcheck="false">[{"symbol": "SPY", "side": "LONG", "quantity": 100, "price": 500}, {"symbol": "AAPL", "side": "LONG", "quantity": 200, "price": 250}]</textarea></label>
+      <label>Equity <input id="risk-equity" type="number" value="100000"></label>
+      <button id="risk-run">Evaluate</button>
+    </div>
+    <div id="risk-error" class="error"></div>
+    <div class="card"><h3>Approved</h3><div id="risk-approved" class="tablewrap"></div></div>
+    <div class="card"><h3>Vetoed</h3><div id="risk-vetoed" class="tablewrap"></div></div>
+  </section>
+
+  <section id="tab-data" class="tab">
+    <div class="card form">
+      <label>Symbol <input id="data-symbol" value="SPY"></label>
+      <label>Source <select id="data-source"></select></label>
+      <button id="data-fetch">Fetch bars</button>
+    </div>
+    <div id="data-error" class="error"></div>
+    <div class="card"><h3>Price</h3><div id="data-chart"></div><div id="data-info" class="hint"></div></div>
+  </section>
+</main>
+<footer>trade-dashboard-web · research &amp; backtesting only — not investment advice</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>
