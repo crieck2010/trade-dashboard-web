@@ -9,6 +9,10 @@ JSON API:
     POST /api/desk       {symbols[], equity, source}
     GET  /api/risk/limits
     POST /api/risk/evaluate  {orders[], limits[[name, params]], equity}
+    GET  /api/paper/status?config=paper-config.json
+    GET  /api/paper/approvals?config=&status=pending
+    POST /api/paper/approve  {config, id, reason}
+    GET  /api/paper/fidelity?config=paper-config.json
 
 The single-page UI is served from ``web/static/``.
 """
@@ -27,6 +31,11 @@ from ..engine import (
     describe_limits,
     evaluate_orders_job,
     list_strategies,
+    paper_approvals,
+    paper_approve,
+    paper_available,
+    paper_fidelity,
+    paper_status,
     run_backtest_job,
     run_desk_job,
 )
@@ -81,6 +90,14 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._json({"symbol": query["symbol"][0].upper(), "bars": bars})
             if path == "/api/risk/limits":
                 return self._json(describe_limits())
+            if path == "/api/paper/status":
+                return self._json(paper_status(query.get("config", [""])[0]))
+            if path == "/api/paper/approvals":
+                return self._json(paper_approvals(
+                    query.get("config", [""])[0],
+                    status=query.get("status", ["pending"])[0]))
+            if path == "/api/paper/fidelity":
+                return self._json(paper_fidelity(query.get("config", [""])[0]))
             return self._serve_static(path)
         except (ValueError, KeyError, RuntimeError) as exc:
             return self._error(str(exc), 400)
@@ -104,6 +121,11 @@ class _Handler(BaseHTTPRequestHandler):
                         equity=float(body.get("equity", 100_000.0)),
                     )
                 )
+            if path == "/api/paper/approve":
+                return self._json(paper_approve(
+                    body.get("config", ""),
+                    int(body.get("id", 0)),
+                    reason=body.get("reason", "")))
             return self._error(f"unknown endpoint {path}", 404)
         except (ValueError, KeyError, RuntimeError) as exc:
             return self._error(str(exc), 400)

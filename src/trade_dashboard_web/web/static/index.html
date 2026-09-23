@@ -14,6 +14,7 @@
     <button data-tab="strategies">Strategies</button>
     <button data-tab="desk">Agent Desk</button>
     <button data-tab="risk">Risk</button>
+    <button data-tab="paper">Paper</button>
     <button data-tab="data">Data</button>
   </nav>
 </header>
@@ -64,6 +65,24 @@
     <div id="risk-error" class="error"></div>
     <div class="card"><h3>Approved</h3><div id="risk-approved" class="tablewrap"></div></div>
     <div class="card"><h3>Vetoed</h3><div id="risk-vetoed" class="tablewrap"></div></div>
+  </section>
+
+  <section id="tab-paper" class="tab">
+    <div class="card form">
+      <label>Config <input id="paper-config" value="paper-config.json" spellcheck="false"></label>
+      <button id="paper-refresh">Refresh</button>
+      <span class="hint">paper-only · nothing here can trade live</span>
+    </div>
+    <div id="paper-error" class="error"></div>
+    <div id="paper-missing" class="card" hidden>
+      <h3>trade-paper not installed</h3>
+      <p class="hint">pip install git+https://github.com/crieck2010/trade-paper.git</p>
+    </div>
+    <div class="card"><h3>Account</h3><div id="paper-account" class="metrics"></div></div>
+    <div class="card"><h3>Positions</h3><div id="paper-positions" class="tablewrap"></div></div>
+    <div class="card"><h3>Approvals — strategies awaiting you</h3><div id="paper-approvals" class="tablewrap"></div></div>
+    <div class="card"><h3>Recent orders</h3><div id="paper-orders" class="tablewrap"></div></div>
+    <div class="card"><h3>Fidelity — backtest vs paper</h3><div id="paper-fidelity" class="tablewrap"></div></div>
   </section>
 
   <section id="tab-data" class="tab">

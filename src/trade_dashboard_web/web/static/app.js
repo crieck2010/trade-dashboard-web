@@ -3,6 +3,7 @@
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtMoney = (v) => "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
 async function api(method, path, body) {
   const res = await fetch(path, {
@@ -176,6 +177,64 @@ async function loadRiskLimits() {
       [["name","name"],["description","description"],["params","params"]]);
   } catch (e) { $("risk-limits").innerHTML = `<span class="hint">${esc(e.message)}</span>`; }
 }
+
+// -- paper tab ------------------------------------------------------------------
+async function loadPaper() {
+  $("paper-error").textContent = "";
+  $("paper-missing").hidden = true;
+  const cfg = $("paper-config").value.trim();
+  const q = `?config=${encodeURIComponent(cfg)}`;
+  try {
+    const s = await api("GET", "/api/paper/status" + q);
+    $("paper-account").innerHTML =
+      `equity <b>${esc(fmtMoney(s.equity))}</b> · cash ${esc(fmtMoney(s.cash))} · ` +
+      `buying power ${esc(fmtMoney(s.buying_power))} · broker ${esc(s.broker)} · ` +
+      `${s.market_open ? "market OPEN" : "market closed"} · ` +
+      `${s.active_strategies} active strateg${s.active_strategies === 1 ? "y" : "ies"} · ` +
+      `${s.pending_approvals} awaiting approval`;
+    $("paper-positions").innerHTML = table(s.positions,
+      [["symbol","symbol"],["qty","qty"],["avg_entry","entry"],["market","mark"],["unrealized","uPnL"],["asset_class","class"]]);
+    $("paper-orders").innerHTML = table(s.recent_orders,
+      [["symbol","symbol"],["side","side"],["qty","qty"],["strategy","strategy"],["state","state"]]);
+  } catch (e) {
+    if (e.message.includes("trade-paper is not installed")) { $("paper-missing").hidden = false; return; }
+    $("paper-error").textContent = e.message; return;
+  }
+  try {
+    const a = await api("GET", "/api/paper/approvals" + q + "&status=pending");
+    $("paper-approvals").innerHTML = a.approvals.length ? a.approvals.map((r) => {
+      const m = r.metrics || {};
+      return `<div class="brief"><b>#${r.id} ${esc(r.strategy)}</b> <span class="hint">${esc(r.symbols)}` +
+        ` · score=${(+r.score || 0).toFixed(2)}` +
+        ` · sharpe=${((m.sharpe_ratio || 0)).toFixed(2)}` +
+        ` · dd=${(((m.max_drawdown || 0)) * 100).toFixed(1)}%</span> ` +
+        `<button data-approve="${r.id}">Approve</button></div>`;
+    }).join("") : `<span class="hint">queue empty — new discoveries arrive after each 3×-daily cycle</span>`;
+    $("paper-approvals").querySelectorAll("[data-approve]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        try {
+          await api("POST", "/api/paper/approve", {config: cfg, id: +btn.dataset.approve, reason: "approved from dashboard"});
+          loadPaper();
+        } catch (e) { $("paper-error").textContent = e.message; }
+      }));
+  } catch (e) { $("paper-error").textContent = e.message; }
+  try {
+    const f = await api("GET", "/api/paper/fidelity" + q);
+    const rows = Object.entries(f.strategies || {}).map(([strategy, s]) => ({
+      strategy, fills: s.fills,
+      avg_realized_bps: s.avg_realized_slippage_bps == null ? "n/a" : s.avg_realized_slippage_bps,
+      gap_bps: s.slippage_gap_bps == null ? "n/a" : s.slippage_gap_bps,
+      verdict: s.verdict,
+    }));
+    $("paper-fidelity").innerHTML =
+      `<div class="hint">backtest assumption: ${f.assumed_slippage_bps} bps · ${f.total_fills} fills</div>` +
+      (rows.length ? table(rows, [["strategy","strategy"],["fills","fills"],["avg_realized_bps","avg bps"],["gap_bps","gap bps"],["verdict","verdict"]])
+                   : `<span class="hint">no fills recorded yet</span>`);
+  } catch (e) { $("paper-error").textContent = e.message; }
+}
+
+$("paper-refresh").addEventListener("click", loadPaper);
+document.querySelector('[data-tab="paper"]').addEventListener("click", loadPaper);
 
 // -- boot ------------------------------------------------------------------------
 (async function init() {

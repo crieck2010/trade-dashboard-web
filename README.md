@@ -34,6 +34,7 @@ synthetic demo data source.
 | **Strategies** | Browse the `trade-strategies` registry: family, description, parameters |
 | **Agent Desk** | Run the `trade-agents` desk over your symbols: briefs, ideas, allocations, risk vetoes |
 | **Risk** | List `trade-risk` limits and evaluate your own orders against a limit stack (cumulative fills) |
+| **Paper** | Paper-trading monitor (needs the `trade-paper` engine): account/equity, positions, recent orders, strategy-approval queue with approve button, backtest-vs-paper fidelity |
 | **Data** | Fetch bars (demo or delayed equities via `trade-data-equities`) and view a candlestick chart |
 
 ## JSON API
@@ -47,6 +48,10 @@ POST /api/backtest        {"strategy","symbols[]","params{}","source","days","in
 POST /api/desk            {"symbols[]","equity","source","days"}
 GET  /api/risk/limits
 POST /api/risk/evaluate   {"orders[]","limits[[name,params]]","equity"}
+GET  /api/paper/status?config=paper-config.json
+GET  /api/paper/approvals?config=&status=pending
+POST /api/paper/approve   {"config","id","reason"}
+GET  /api/paper/fidelity?config=paper-config.json
 ```
 
 Example:

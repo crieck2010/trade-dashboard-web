@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-09-23
+
+### Added
+- New **Paper** tab wired to the `trade-paper` engine (lazy optional import):
+  paper account/equity/buying power, open positions, recent orders, pending
+  strategy-approval queue with one-click approve, and a fidelity report
+  comparing backtest slippage assumptions to realized paper slippage.
+- New JSON API endpoints: `GET /api/paper/status`, `GET /api/paper/approvals`,
+  `POST /api/paper/approve`, `GET /api/paper/fidelity`.
+- New `engine/paper_service.py` (`paper_status`, `paper_approvals`,
+  `paper_approve`, `paper_fidelity`, `paper_available`) with an install hint
+  when `trade-paper` is not present.
+
 ## [0.1.0] - 2026-09-23
 
 ### Added
