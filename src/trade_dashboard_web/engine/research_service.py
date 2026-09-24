@@ -411,3 +411,124 @@ def run_correlation_job(
         raise ValueError(f"need >= 30 bars per symbol, have {lb}")
     bars = {s: norm[s][-lb:] for s in syms}
     return te.analyze(bars, method=method, shrinkage=shrinkage)
+
+
+# ---------------------------------------------------------------------------
+# Breadth
+# ---------------------------------------------------------------------------
+
+def run_breadth_job(
+    preset: str = "standard",
+    seed: int = 7,
+    n_days: int = 600,
+    thrust_window: int = 10,
+) -> dict:
+    """Market-breadth regime snapshot over a seeded demo universe (trade-breadth)."""
+    tb = _require("trade-breadth", "trade_breadth")
+    seed = int(seed)
+    n_days = int(n_days)
+    thrust_window = int(thrust_window)
+    if n_days < 60:
+        raise ValueError(f"need >= 60 days, have {n_days}")
+    if n_days > 5000:
+        raise ValueError(f"n_days capped at 5000, have {n_days}")
+    if thrust_window < 1:
+        raise ValueError("thrust_window must be >= 1")
+    universe, weights = tb.demo_universe(seed=seed, n_days=n_days)
+    # engine raises ValueError for an unknown preset
+    snapshot = tb.snapshot(universe, weights=weights, preset=preset,
+                           thrust_window=thrust_window)
+    return {
+        "source": "trade-breadth",
+        "preset": preset,
+        "seed": seed,
+        "n_days": n_days,
+        "n_symbols": snapshot["universe"]["n_symbols"],
+        "snapshot": snapshot,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Macro
+# ---------------------------------------------------------------------------
+
+def run_macro_job(
+    preset: str = "standard",
+    seed: int = 42,
+    days: int = 600,
+) -> dict:
+    """Copper/gold macro regime snapshot (trade-macro, demo series)."""
+    tm = _require("trade-macro", "trade_macro")
+    seed = int(seed)
+    days = int(days)
+    if days < 250:
+        raise ValueError(f"need >= 250 days for the 200DMA, have {days}")
+    if days > 5000:
+        raise ValueError(f"days capped at 5000, have {days}")
+    series = tm.demo_series(seed=seed, days=days)
+    snapshot = tm.snapshot(series["copper"], series["gold"],
+                           preset=preset, source="synthetic")
+    return {
+        "source": "trade-macro",
+        "preset": preset,
+        "seed": seed,
+        "days": days,
+        "snapshot": snapshot,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stream demo
+# ---------------------------------------------------------------------------
+
+def run_stream_demo_job(
+    symbols: tuple = ("AAA", "BBB", "CCC"),
+    seed: int = 7,
+    n_ticks: int = 600,
+) -> dict:
+    """Bounded end-to-end streaming demo (trade-stream): demo feed -> bus."""
+    ts = _require("trade-stream", "trade_stream")
+    syms = tuple((s or "").strip().upper() for s in (symbols or ()))
+    syms = tuple(s for s in syms if s)
+    if not syms:
+        raise ValueError("at least one symbol is required")
+    seed = int(seed)
+    n_ticks = int(n_ticks)
+    if n_ticks < 1:
+        raise ValueError("n_ticks must be >= 1")
+    if n_ticks > 10_000:
+        raise ValueError("n_ticks capped at 10_000 for the dashboard demo")
+    result = ts.run_demo(symbols=syms, seed=seed, n_ticks=n_ticks)
+    return {"source": "trade-stream", "demo": True, **result}
+
+
+# ---------------------------------------------------------------------------
+# Reconcile demo
+# ---------------------------------------------------------------------------
+
+def run_reconcile_demo_job() -> dict:
+    """Paper-ledger vs broker reconcile against the read-only MCP mock (trade-paper).
+
+    Mirrors ``trade-paper robinhood reconcile --demo``: the paper map is the
+    deliberate-drift demo ledger, the broker side comes from the scripted
+    in-memory MCP server (no network, no credentials).  Drift is reported,
+    never corrected.
+    """
+    _require("trade-paper", "trade_paper")
+    from trade_paper import robinhood_mcp as rh
+    transport = rh.MockMCPTransport.demo()
+    broker = rh.RobinhoodMCPBroker(transport=transport)
+    accounts = broker.get_accounts()
+    account_id = (accounts[0].get("account_id") or "") if accounts else ""
+    broker_positions = rh.broker_position_map(
+        broker.get_positions(account_id) if account_id else [])
+    paper_positions = {"AAPL": 10.0, "TSLA": 4.5, "NVDA": 2.0}  # deliberate drift
+    result = rh.reconcile(paper_positions, broker_positions)
+    return {
+        "source": "trade-paper",
+        "demo": True,
+        "account_id": account_id,
+        "paper_positions": paper_positions,
+        "broker_positions": broker_positions,
+        "reconcile": result,
+    }

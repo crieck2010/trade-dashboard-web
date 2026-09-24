@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-24
+
+### Added
+- Ninth and tenth **Research Lab** panels: **Breadth** (`trade-breadth`) —
+  regime badge, fragility gauge (0–1 bar), recent breadth-thrust list, and
+  key indicators over a seeded 60-symbol demo universe; **Macro**
+  (`trade-macro`) — regime badge, copper/gold z-score, ratio vs 200DMA,
+  and transition alerts from a synthetic demo series.
+- New top-level **Live** tab: latest prices per symbol from a demo
+  `trade-stream` session, polled every 2s, labeled
+  "DEMO STREAM — simulated feed" (not real data).
+- New **Broker reconcile (demo)** panel on the Paper tab: `POST
+  /api/research/reconcile-demo` diffs the deliberate-drift demo paper
+  ledger against the read-only Robinhood MCP mock (`trade-paper`) and
+  renders matched / missing / quantity-mismatch rows.
+- `run_breadth_job`, `run_macro_job`, `run_stream_demo_job`, and
+  `run_reconcile_demo_job` in `engine/research_service.py` (canonical,
+  plain-data, lazy engine imports); new endpoints
+  `POST /api/research/breadth` (`{preset, seed, days, thrust_window}`),
+  `POST /api/research/macro` (`{preset, seed, days}`),
+  `POST /api/research/reconcile-demo` (`{}`, demo only), and
+  `GET /api/stream/latest` — served from a module-level lazily-started
+  demo stream session (`StreamSession` `source="demo"`,
+  `LatestPriceCache` on its bus; the finite demo feed is re-created with
+  a fresh timestamp offset on each exhaustion so it runs indefinitely).
+- 9 new tests: 4 engine research-job tests, 4 missing-engine install-hint
+  tests, and live-server tests for the 3 new POST endpoints plus
+  `GET /api/stream/latest`.
+
+### Notes
+- `trade-data-equities` v0.2.0's `PolygonProvider` is data-layer only
+  (a new bar source inside that engine) — no dashboard code change.
+- Demo caveats: breadth uses the engine's seeded 60-symbol demo universe,
+  macro uses a synthetic copper/gold series; both illustrative only.
+  The Live tab's ticks are simulated (AAA/BBB/CCC), not real prices.
+
 ## [0.3.0] - 2026-09-24
 
 ### Added

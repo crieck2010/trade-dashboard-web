@@ -22,6 +22,10 @@ JSON API:
          (alias: /api/research/sentiment)
     POST /api/research/volsurface   {symbol, spot, risk_free}
     POST /api/research/correlation  {symbols[], source, days, method, shrinkage, lookback}
+    POST /api/research/breadth      {preset, seed, days, thrust_window}
+    POST /api/research/macro        {preset, seed, days}
+    POST /api/research/reconcile-demo  {}  (demo only: mock MCP broker)
+    GET  /api/stream/latest        latest demo-stream prices per symbol
 
 The single-page UI is served from ``web/static/``.
 """
@@ -30,6 +34,8 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -46,18 +52,69 @@ from ..engine import (
     paper_fidelity,
     paper_status,
     run_backtest_job,
+    run_breadth_job,
     run_correlation_job,
     run_desk_job,
     run_factor_analysis_job,
+    run_macro_job,
     run_montecarlo_job,
     run_optimize_job,
     run_orderbook_job,
     run_pairs_job,
+    run_reconcile_demo_job,
     run_sentiment_price_job,
     run_vol_surface_job,
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
+
+# -- demo stream session ------------------------------------------------------
+#
+# A module-level lazily-started trade-stream session feeds
+# ``GET /api/stream/latest``.  Started on the first request: a StreamSession
+# with ``source="demo"`` over three demo symbols, with a LatestPriceCache
+# attached to its bus as the read model for latest prices.
+#
+# The demo feed is finite (600 ticks), so the session's reconnect policy
+# (balanced, unlimited attempts) re-creates the feed on exhaustion — a fresh
+# generator is built on every restart with a monotonically increasing
+# ``start_ts`` offset, keeping cache timestamps fresh so the session runs
+# indefinitely.  Startup is guarded by a module lock and the cache is
+# thread-safe, so concurrent requests are safe.  The background thread is a
+# daemon and dies with the process.
+_STREAM_SYMBOLS = ("AAA", "BBB", "CCC")
+_stream_lock = threading.Lock()
+_stream_session = None
+_stream_cache = None
+
+
+def _demo_stream_session():
+    """Return the (session, price cache) singleton, starting it on first use."""
+    global _stream_session, _stream_cache
+    with _stream_lock:
+        if _stream_session is None:
+            try:
+                import trade_stream
+            except ImportError as exc:
+                raise RuntimeError(
+                    "trade-stream is not installed; install it with "
+                    "`pip install git+https://github.com/crieck2010/trade-stream.git`"
+                ) from exc
+            batch = {"n": 0}
+
+            def _feed():
+                batch["n"] += 1
+                return trade_stream.demo.demo_feed(
+                    symbols=_STREAM_SYMBOLS, seed=7,
+                    start_ts=(trade_stream.demo.BASE_TS + batch["n"] * 10_000.0))
+
+            bus = trade_stream.MessageBus()
+            _stream_cache = trade_stream.LatestPriceCache(bus)
+            _stream_session = trade_stream.StreamSession(
+                source="demo", symbols=list(_STREAM_SYMBOLS), bus=bus,
+                transport=trade_stream.DemoTransport(_feed))
+            _stream_session.start()
+        return _stream_session, _stream_cache
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -115,6 +172,8 @@ class _Handler(BaseHTTPRequestHandler):
                     status=query.get("status", ["pending"])[0]))
             if path == "/api/paper/fidelity":
                 return self._json(paper_fidelity(query.get("config", [""])[0]))
+            if path == "/api/stream/latest":
+                return self._json(self._stream_latest())
             return self._serve_static(path)
         except (ValueError, KeyError, RuntimeError) as exc:
             return self._error(str(exc), 400)
@@ -238,7 +297,35 @@ class _Handler(BaseHTTPRequestHandler):
                 method=body.get("method", "pearson"),
                 shrinkage=body.get("shrinkage", "ledoit_wolf"),
                 lookback=int(body.get("lookback", 252)))
+        if name == "breadth":
+            return run_breadth_job(
+                preset=body.get("preset", "standard"),
+                seed=int(body.get("seed", 7)),
+                n_days=int(body.get("days", 600)),
+                thrust_window=int(body.get("thrust_window", 10)))
+        if name == "macro":
+            return run_macro_job(
+                preset=body.get("preset", "standard"),
+                seed=int(body.get("seed", 42)),
+                days=int(body.get("days", 600)))
+        if name == "reconcile-demo":
+            return run_reconcile_demo_job()
         raise KeyError(f"unknown research job {name!r}")
+
+    def _stream_latest(self) -> dict:
+        """Latest prices per symbol from the demo stream session.
+
+        Starts the module-level session on first call; waits briefly for the
+        first batch of ticks to land in the cache.
+        """
+        _session, cache = _demo_stream_session()
+        prices = cache.as_dict()
+        deadline = time.time() + 2.0
+        while not prices and time.time() < deadline:
+            time.sleep(0.05)
+            prices = cache.as_dict()
+        return {"demo": True, "source": "trade-stream",
+                "symbols": list(_STREAM_SYMBOLS), "prices": prices}
 
     # -- static files -------------------------------------------------------
     def _serve_static(self, path: str):

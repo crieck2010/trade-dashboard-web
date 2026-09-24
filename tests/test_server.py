@@ -123,6 +123,9 @@ def _post_research(base_url, name, payload):
                         "trade_volsurface" if name == "volsurface" else
                         "trade_factors" if name == "factors" else
                         "trade_eda" if name == "correlation" else
+                        "trade_breadth" if name == "breadth" else
+                        "trade_macro" if name == "macro" else
+                        "trade_paper" if name == "reconcile-demo" else
                         "trade_sentiment_vs_price")
     return post(base_url, f"/api/research/{name}", payload)
 
@@ -188,3 +191,58 @@ def test_research_index_has_tab(base_url):
     with urllib.request.urlopen(base_url + "/") as res:
         html = res.read().decode()
     assert "Research Lab" in html and "rs-pairs-run" in html
+
+
+def test_research_breadth_endpoint(base_url):
+    status, data = _post_research(base_url, "breadth", {
+        "seed": 7, "days": 300, "thrust_window": 10})
+    assert status == 200 and data["source"] == "trade-breadth"
+    assert data["snapshot"]["regime"]
+    assert 0.0 <= data["snapshot"]["fragility"] <= 1.0
+
+
+def test_research_macro_endpoint(base_url):
+    status, data = _post_research(base_url, "macro",
+                                 {"seed": 42, "days": 300})
+    assert status == 200 and data["source"] == "trade-macro"
+    assert data["snapshot"]["z_score"] is not None
+    assert "ratio_vs_200dma" in data["snapshot"]
+
+
+def test_research_reconcile_demo_endpoint(base_url):
+    status, data = _post_research(base_url, "reconcile-demo", {})
+    assert status == 200 and data["source"] == "trade-paper"
+    assert data["demo"] is True
+    assert data["reconcile"]["clean"] is False  # deliberate drift
+
+
+def test_stream_latest_endpoint(base_url):
+    pytest.importorskip("trade_stream")
+    status, data = get(base_url, "/api/stream/latest")
+    assert status == 200 and data["demo"] is True
+    assert data["source"] == "trade-stream"
+    assert set(data["symbols"]) == {"AAA", "BBB", "CCC"}
+    assert data["prices"]  # first batch lands within ~2s of session start
+
+
+def test_research_breadth_bad_preset(base_url):
+    pytest.importorskip("trade_breadth")
+    status, data = post(base_url, "/api/research/breadth",
+                        {"preset": "bogus", "days": 300})
+    assert status == 400 and "error" in data
+
+
+def test_stream_latest_missing_engine(base_url):
+    import sys
+    if "trade_stream" in sys.modules:
+        pytest.skip("trade_stream present; missing-engine path not exercised")
+    status, data = get(base_url, "/api/stream/latest")
+    assert status == 400 and "trade-stream" in data["error"]
+
+
+def test_reconcile_demo_missing_engine(base_url):
+    import sys
+    if "trade_paper" in sys.modules:
+        pytest.skip("trade_paper present; missing-engine path not exercised")
+    status, data = post(base_url, "/api/research/reconcile-demo", {})
+    assert status == 400 and "trade-paper" in data["error"]

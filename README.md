@@ -34,9 +34,10 @@ synthetic demo data source.
 | **Strategies** | Browse the `trade-strategies` registry: family, description, parameters |
 | **Agent Desk** | Run the `trade-agents` desk over your symbols: briefs, ideas, allocations, risk vetoes |
 | **Risk** | List `trade-risk` limits and evaluate your own orders against a limit stack (cumulative fills) |
-| **Paper** | Paper-trading monitor (needs the `trade-paper` engine): account/equity, positions, recent orders, strategy-approval queue with approve button, backtest-vs-paper fidelity |
+| **Paper** | Paper-trading monitor (needs the `trade-paper` engine): account/equity, positions, recent orders, strategy-approval queue with approve button, backtest-vs-paper fidelity, plus a broker-reconcile demo panel (paper ledger vs read-only mock broker) |
 | **Data** | Fetch bars (demo or delayed equities via `trade-data-equities`) and view a candlestick chart |
-| **Research Lab** | Eight quant-engine panels: pairs screening, order-book simulation, portfolio optimization, Monte Carlo VaR, vol-surface fitting, factor analysis, sentiment-vs-price, correlation/EDA — plain-data results rendered as tables/metrics/charts |
+| **Live** | Demo price stream (needs `trade-stream`): latest prices per symbol from the seeded simulated feed, refreshed every 2s — DEMO STREAM, not real data |
+| **Research Lab** | Ten quant-engine panels: pairs screening, order-book simulation, portfolio optimization, Monte Carlo VaR, vol-surface fitting, factor analysis, sentiment-vs-price, correlation/EDA, market breadth, macro (copper/gold) — plain-data results rendered as tables/metrics/charts |
 
 ## JSON API
 
@@ -61,6 +62,10 @@ POST /api/research/volsurface   {"symbol","spot","risk_free"}
 POST /api/research/factors      {"symbols[]","source","days","model","months"}
 POST /api/research/sentiment-price  {"symbol","days"}
 POST /api/research/correlation     {"symbols[]","source","days","method","shrinkage","lookback"}
+POST /api/research/breadth         {"preset","seed","days","thrust_window"}
+POST /api/research/macro           {"preset","seed","days"}
+POST /api/research/reconcile-demo  {}   (demo only: mock MCP broker)
+GET  /api/stream/latest            latest demo-stream prices per symbol
 ```
 
 Example:
@@ -82,7 +87,7 @@ src/trade_dashboard_web/
     backtest_service.py  # run backtests -> metrics, equity curve, trades
     desk_service.py      # run the agent desk -> report dict
     risk_service.py      # evaluate orders against limit stacks
-    research_service.py  # 8 research-lab jobs, one per quant engine (plain in/out)
+    research_service.py  # research/stream/reconcile jobs, one per engine (plain in/out)
   web/
     server.py        # thin stdlib-HTTP layer: routing + JSON API + static files
     static/          # index.html, styles.css, app.js (vanilla JS, SVG charts)
@@ -93,7 +98,7 @@ The engine modules are independently importable and testable without
 starting the server; the web layer is a thin translation to HTTP.
 
 Interoperability: `engine/research_service.py` is the canonical
-implementation of the seven research jobs. The `trade-suite` meta-package's
+implementation of the research jobs. The `trade-suite` meta-package's
 research workflows delegate to these same `run_*_job` functions, and the
 desktop dashboard binds its service names to this module whenever the web
 package is installed — so a CLI run, a scripted run, the web dashboard, and
@@ -119,13 +124,18 @@ the desktop dashboard all execute the identical code path.
   are synthetic (real factors via `load_french_csv`); sentiment-vs-price
   uses synthetic data with a planted 1-day sentiment lead (real rows via
   archived trade-sentiment scans, which are snapshot-based). The factors
-  panel needs ≥24 monthly returns per symbol (up to 750 demo bars).
+  panel needs ≥24 monthly returns per symbol (up to 750 demo bars). The
+  breadth and macro panels run on seeded synthetic demo data (a 60-symbol
+  universe and a copper/gold series, respectively) — illustrative only.
+  The Live tab shows a simulated tick stream (AAA/BBB/CCC); reconcile-demo
+  diffs the demo paper ledger against a scripted mock broker — neither
+  touches real money or real prices.
 - Single-process server: fine for personal research, not a production
   deployment target.
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md). Current version: **0.1.0**.
+See [CHANGELOG.md](CHANGELOG.md). Current version: **0.4.0**.
 
 ## The maths
 

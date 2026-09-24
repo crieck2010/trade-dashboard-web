@@ -365,3 +365,84 @@ $("rs-co-run").addEventListener("click", () => rRun("rs-co-run", "rs-co-error", 
      ["zero_vol", "Zero vol"], ["stale", "Stale runs"], ["outliers", "Outliers"],
      ["clean", "Clean"]]);
 }));
+
+// -- research lab: breadth --------------------------------------------------------
+$("rs-br-run").addEventListener("click", () => rRun("rs-br-run", "rs-br-error", async () => {
+  const r = await api("POST", "/api/research/breadth", {
+    preset: $("rs-br-preset").value, seed: +$("rs-br-seed").value,
+    days: +$("rs-br-days").value, thrust_window: +$("rs-br-thrust").value});
+  const s = r.snapshot;
+  rMetrics("rs-br-metrics", {
+    regime: s.regime, regime_score: s.regime_score, date: s.date,
+    n_symbols: r.n_symbols, thrust_window: (s.config || {}).thrust_window});
+  const f = +s.fragility || 0;
+  $("rs-br-fragility").innerHTML =
+    `<div class="hint">fragility ${f.toFixed(3)} / 1.00</div>` +
+    `<div style="background:#1c2333;border-radius:4px;height:12px">` +
+    `<div style="width:${(f * 100).toFixed(1)}%;height:12px;border-radius:4px;background:` +
+    (f > 0.66 ? "#ff6b6b" : f > 0.33 ? "#f0a24a" : "#3fd08c") + `"></div></div>`;
+  $("rs-br-thrusts").innerHTML = table(s.thrusts_recent.map((t) => ({
+    date: t.date, type: t.type, magnitude: t.magnitude,
+    pct_above_50dma: t.pct_above_50dma, window: t.window})),
+    [["date", "Date"], ["type", "Type"], ["magnitude", "Magnitude"],
+     ["pct_above_50dma", "% > 50DMA"], ["window", "Window"]]);
+  const ind = s.indicators || {};
+  rMetrics("rs-br-indicators", {
+    pct_above_50dma: ind.pct_above_50dma, pct_above_200dma: ind.pct_above_200dma,
+    ad_ratio: ind.ad_ratio, mcclellan_oscillator: ind.mcclellan_oscillator,
+    ew_cw_ratio: ind.ew_cw_ratio, up_down_volume_ratio: ind.up_down_volume_ratio,
+    new_highs: ind.new_highs, new_lows: ind.new_lows,
+    warnings: (s.warnings || []).map((w) => w.type || JSON.stringify(w)).join(", ") || "none"});
+}));
+
+// -- research lab: macro ----------------------------------------------------------
+$("rs-ma-run").addEventListener("click", () => rRun("rs-ma-run", "rs-ma-error", async () => {
+  const r = await api("POST", "/api/research/macro", {
+    preset: $("rs-ma-preset").value, seed: +$("rs-ma-seed").value,
+    days: +$("rs-ma-days").value});
+  const s = r.snapshot;
+  rMetrics("rs-ma-metrics", {
+    regime: s.regime, date: s.date,
+    z_score: s.z_score, ratio: s.ratio, ratio_vs_200dma: s.ratio_vs_200dma,
+    roc_21d: s.roc_21d,
+    transition_alert: s.transition_alert ? "YES — " + (s.transition && s.transition.direction) : "no"});
+}));
+
+// -- paper tab: broker reconcile (demo) -------------------------------------------
+$("paper-reconcile-run").addEventListener("click", async () => {
+  const b = $("paper-reconcile-run"); b.disabled = true; $("paper-reconcile-error").textContent = "";
+  try {
+    const r = await api("POST", "/api/research/reconcile-demo", {});
+    const rc = r.reconcile;
+    rMetrics("paper-reconcile-metrics", {
+      clean: rc.clean ? "yes" : "NO — drift detected",
+      matched: rc.matched.length, account: r.account_id});
+    const rows = [];
+    rc.missing_from_broker.forEach((m) => rows.push({symbol: m.symbol, side: "in paper only", paper: m.paper, broker: ""}));
+    rc.missing_from_ledger.forEach((m) => rows.push({symbol: m.symbol, side: "at broker only", paper: "", broker: m.broker}));
+    rc.quantity_mismatches.forEach((m) => rows.push({symbol: m.symbol, side: "qty mismatch", paper: m.paper, broker: m.broker}));
+    $("paper-reconcile-table").innerHTML = table(rows,
+      [["symbol", "Symbol"], ["side", "Drift"], ["paper", "Paper qty"], ["broker", "Broker qty"]]);
+  } catch (e) { $("paper-reconcile-error").textContent = e.message; }
+  b.disabled = false;
+});
+
+// -- live tab: demo stream ----------------------------------------------------------
+let liveTimer = null;
+async function loadLive() {
+  try {
+    const r = await api("GET", "/api/stream/latest");
+    $("live-table").innerHTML = table(r.symbols.map((s) => {
+      const p = r.prices[s] || {};
+      return {symbol: s, price: p.price, ts: p.ts};
+    }), [["symbol", "Symbol"], ["price", "Price"], ["ts", "Tick ts"]]);
+  } catch (e) { $("live-error").textContent = e.message; }
+}
+document.querySelector('[data-tab="live"]').addEventListener("click", () => {
+  loadLive();
+  if (!liveTimer) {
+    liveTimer = setInterval(() => {
+      if ($("tab-live").classList.contains("active")) loadLive();
+    }, 2000);
+  }
+});

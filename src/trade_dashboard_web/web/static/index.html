@@ -16,6 +16,7 @@
     <button data-tab="risk">Risk</button>
     <button data-tab="paper">Paper</button>
     <button data-tab="data">Data</button>
+    <button data-tab="live">Live</button>
     <button data-tab="research">Research Lab</button>
   </nav>
 </header>
@@ -84,6 +85,22 @@
     <div class="card"><h3>Approvals — strategies awaiting you</h3><div id="paper-approvals" class="tablewrap"></div></div>
     <div class="card"><h3>Recent orders</h3><div id="paper-orders" class="tablewrap"></div></div>
     <div class="card"><h3>Fidelity — backtest vs paper</h3><div id="paper-fidelity" class="tablewrap"></div></div>
+    <div class="card"><h3>Broker reconcile (demo)</h3>
+      <div class="form"><button id="paper-reconcile-run">Run reconcile</button>
+        <span class="hint">trade-paper · paper ledger vs read-only mock broker · demo only</span></div>
+      <div id="paper-reconcile-error" class="error"></div>
+      <div id="paper-reconcile-metrics" class="metrics"></div>
+      <div id="paper-reconcile-table" class="tablewrap"></div>
+    </div>
+  </section>
+
+  <section id="tab-live" class="tab">
+    <div class="card"><h3>DEMO STREAM — simulated feed</h3>
+      <p class="hint">trade-stream demo session (AAA, BBB, CCC) · polls
+      <code>GET /api/stream/latest</code> every 2s · simulated prices, not real data</p>
+      <div id="live-error" class="error"></div>
+      <div id="live-table" class="tablewrap"></div>
+    </div>
   </section>
 
   <section id="tab-data" class="tab">
@@ -106,6 +123,8 @@
       <button data-rsub="factors">Factors</button>
       <button data-rsub="sentiment">Sentiment</button>
       <button data-rsub="correlation">Correlations</button>
+      <button data-rsub="breadth">Breadth</button>
+      <button data-rsub="macro">Macro</button>
     </nav>
 
     <div id="rsub-pairs" class="rsub active">
@@ -206,6 +225,34 @@
       <div class="card"><h3>Correlation matrix</h3><div id="rs-co-matrix" class="tablewrap"></div></div>
       <div class="card"><h3>Per-asset stats</h3><div id="rs-co-describe" class="tablewrap"></div></div>
       <div class="card"><h3>Data quality</h3><div id="rs-co-quality" class="tablewrap"></div></div>
+    </div>
+
+    <div id="rsub-breadth" class="rsub">
+      <div class="card form">
+        <label>Preset <select id="rs-br-preset"><option>standard</option><option>strict</option><option>loose</option></select></label>
+        <label>Seed <input id="rs-br-seed" type="number" value="7"></label>
+        <label>Days <input id="rs-br-days" type="number" value="600"></label>
+        <label>Thrust window <input id="rs-br-thrust" type="number" value="10"></label>
+        <button id="rs-br-run">Snapshot</button>
+        <span class="hint">trade-breadth · 60-symbol seeded demo universe</span>
+      </div>
+      <div id="rs-br-error" class="error"></div>
+      <div class="card"><h3>Regime</h3><div id="rs-br-metrics" class="metrics"></div></div>
+      <div class="card"><h3>Fragility</h3><div id="rs-br-fragility"></div></div>
+      <div class="card"><h3>Recent breadth thrusts</h3><div id="rs-br-thrusts" class="tablewrap"></div></div>
+      <div class="card"><h3>Key indicators</h3><div id="rs-br-indicators" class="metrics"></div></div>
+    </div>
+
+    <div id="rsub-macro" class="rsub">
+      <div class="card form">
+        <label>Preset <select id="rs-ma-preset"><option>sensitive</option><option selected>standard</option><option>calm</option></select></label>
+        <label>Seed <input id="rs-ma-seed" type="number" value="42"></label>
+        <label>Days <input id="rs-ma-days" type="number" value="600"></label>
+        <button id="rs-ma-run">Snapshot</button>
+        <span class="hint">trade-macro · copper/gold ratio, synthetic demo series</span>
+      </div>
+      <div id="rs-ma-error" class="error"></div>
+      <div class="card"><h3>Regime</h3><div id="rs-ma-metrics" class="metrics"></div></div>
     </div>
   </section>
 </main>

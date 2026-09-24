@@ -173,3 +173,107 @@ def test_research_correlation_job():
         run_correlation_job(["SPY"], bars)
     with pytest.raises(ValueError):
         run_correlation_job(["SPY", "QQQ"], bars, method="bogus")
+
+
+# -- research lab: breadth / macro / stream / reconcile (v0.4.0) ------------------
+
+def test_research_breadth_job():
+    _need("trade_breadth")
+    import json
+    from trade_dashboard_web.engine import run_breadth_job
+    r = run_breadth_job(seed=7, n_days=300, thrust_window=10)
+    json.dumps(r)  # must survive a JSON round-trip
+    assert r["source"] == "trade-breadth"
+    assert r["n_symbols"] == 60
+    assert r["n_days"] == 300
+    snap = r["snapshot"]
+    assert snap["regime"]
+    assert 0.0 <= snap["fragility"] <= 1.0
+    assert "indicators" in snap and "thrusts_recent" in snap
+    with pytest.raises(ValueError):
+        run_breadth_job(preset="bogus", n_days=300)
+    with pytest.raises(ValueError):
+        run_breadth_job(n_days=10)
+
+
+def test_research_macro_job():
+    _need("trade_macro")
+    import json
+    from trade_dashboard_web.engine import run_macro_job
+    r = run_macro_job(seed=42, days=300)
+    json.dumps(r)
+    assert r["source"] == "trade-macro"
+    assert r["days"] == 300
+    snap = r["snapshot"]
+    assert snap["regime"]
+    assert snap["z_score"] is not None
+    assert snap["ratio_vs_200dma"] is not None
+    assert "transition_alert" in snap
+    with pytest.raises(ValueError):
+        run_macro_job(days=100)
+
+
+def test_research_stream_demo_job():
+    _need("trade_stream")
+    import json
+    from trade_dashboard_web.engine import run_stream_demo_job
+    r = run_stream_demo_job(symbols=("AAA", "BBB"), seed=7, n_ticks=200)
+    json.dumps(r)
+    assert r["source"] == "trade-stream"
+    assert r["demo"] is True
+    assert r["n_ticks"] == 200
+    assert set(r["symbols"]) == {"AAA", "BBB"}
+    with pytest.raises(ValueError):
+        run_stream_demo_job(symbols=())
+    with pytest.raises(ValueError):
+        run_stream_demo_job(n_ticks=0)
+    with pytest.raises(ValueError):
+        run_stream_demo_job(n_ticks=100_001)
+
+
+def test_research_reconcile_demo_job():
+    _need("trade_paper")
+    import json
+    from trade_dashboard_web.engine import run_reconcile_demo_job
+    r = run_reconcile_demo_job()
+    json.dumps(r)
+    assert r["source"] == "trade-paper"
+    assert r["demo"] is True
+    assert r["paper_positions"] == {"AAPL": 10.0, "TSLA": 4.5, "NVDA": 2.0}
+    assert r["broker_positions"] == {"AAPL": 10.0, "TSLA": 5.0}
+    rc = r["reconcile"]
+    assert rc["clean"] is False  # the demo ledger carries deliberate drift
+    assert rc["matched"] == ["AAPL"]
+    assert [m["symbol"] for m in rc["missing_from_broker"]] == ["NVDA"]
+    assert [m["symbol"] for m in rc["quantity_mismatches"]] == ["TSLA"]
+
+
+def _block(monkeypatch, package):
+    """Make ``package`` unimportable (simulates a missing engine)."""
+    import builtins
+    real_import = builtins.__import__
+
+    def fake(name, *args, **kwargs):
+        if name == package:
+            raise ImportError(f"No module named {name!r}")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake)
+
+
+@pytest.mark.parametrize(
+    "job_fn,package,dist",
+    [
+        ("run_breadth_job", "trade_breadth", "trade-breadth"),
+        ("run_macro_job", "trade_macro", "trade-macro"),
+        ("run_stream_demo_job", "trade_stream", "trade-stream"),
+        ("run_reconcile_demo_job", "trade_paper", "trade-paper"),
+    ],
+)
+def test_missing_engine_raises_install_hint(monkeypatch, job_fn, package, dist):
+    from trade_dashboard_web import engine
+    _block(monkeypatch, package)
+    with pytest.raises(RuntimeError) as exc_info:
+        getattr(engine, job_fn)()
+    assert "pip install" in str(exc_info.value)
+    assert dist in str(exc_info.value)
