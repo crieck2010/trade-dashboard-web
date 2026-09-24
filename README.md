@@ -126,3 +126,13 @@ the desktop dashboard all execute the identical code path.
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md). Current version: **0.1.0**.
+
+## The maths
+
+**What you learn.** The dashboard is a thin UI over a pure-Python engine layer: every tab and every Research Lab panel reduces to one `run_*_job` function that takes plain data in and returns plain data out. The maths lives in those jobs — backtest performance metrics, portfolio construction, and Monte Carlo risk — computed by sibling quant engines and summarized for display.
+
+**Why it matters.** Because the engine functions are the *canonical* implementations shared with the `trade-suite` CLI workflows and the desktop dashboard, a number you see in the browser is bit-for-bit the number a scripted run produces. There is exactly one code path per computation, so "the dashboard said X" and "the CLI said X" can never disagree.
+
+**The maths.** The Backtest Lab passes bars through `trade-backtest` and reports its metrics: total/annualized return, volatility, Sharpe ratio (`mean excess return / stdev`), max drawdown (worst peak-to-trough equity loss), and win rate. The Optimize panel builds the sample mean vector `μ` and covariance `Σ` from daily simple returns, then finds max-Sharpe (`(wᵀμ) / √(wᵀΣw)`) or minimum-variance portfolios under a max-weight cap. The Monte Carlo panel estimates per-asset `μ`, `σ`, and the correlation matrix from sample moments of simple returns, simulates correlated GBM paths (`dS = μS·dt + σS·dW`, Cholesky-correlated shocks), and reports VaR/CVaR at the chosen confidence level over the simulated terminal portfolio values. The remaining panels (pairs ADF cointegration tests, order-book impact, vol-surface SVI-style fitting, Fama-French regressions with GRS, sentiment lead-lag, Ledoit-Wolf correlation shrinkage) delegate to their engines of record and the dashboard only renders the returned plain-data results.
+
+**Honest limitations.** The dashboard computes no statistics of its own beyond thin aggregations — its correctness inherits the sibling engines' assumptions (e.g. GBM for VaR, sample moments for the frontier). Monte Carlo and backtest jobs run inline in the request thread, so heavy runs block the single-process server. Demo-mode numbers are synthetic; the Research Lab panels carry their own demo-data caveats (synthetic vol quotes, synthetic factor dates, planted sentiment lead).
