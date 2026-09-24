@@ -313,7 +313,7 @@ $("rs-fa-run").addEventListener("click", () => rRun("rs-fa-run", "rs-fa-error", 
   $("rs-fa-verdict").textContent =
     `${r.model.toUpperCase()} · ${r.n_months} months\n` +
     `GRS joint-alpha test: F=${(+g.F || 0).toFixed(2)}, p=${(+g.pvalue || 1).toFixed(4)} ` +
-    `(+g.pvalue < 0.05 ? "→ reject joint zero-alpha" : "→ cannot reject joint zero-alpha")`;
+    ((+g.pvalue || 1) < 0.05 ? "→ reject joint zero-alpha" : "→ cannot reject joint zero-alpha");
   $("rs-fa-table").innerHTML = table(Object.entries(r.assets).map(([symbol, a]) => ({
     symbol, alpha: a.alpha.toFixed(4), alpha_t: a.alpha_t.toFixed(2),
     alpha_p: a.alpha_p.toFixed(3), r_squared: a.rsquared.toFixed(3),
@@ -322,6 +322,6 @@ $("rs-fa-run").addEventListener("click", () => rRun("rs-fa-run", "rs-fa-error", 
 }));
 
 $("rs-se-run").addEventListener("click", () => rRun("rs-se-run", "rs-se-error", async () => {
-  const r = await api("POST", "/api/research/sentiment", {symbol: $("rs-se-symbol").value});
+  const r = await api("POST", "/api/research/sentiment-price", {symbol: $("rs-se-symbol").value});
   $("rs-se-verdict").textContent = JSON.stringify(r, null, 2);
 }));

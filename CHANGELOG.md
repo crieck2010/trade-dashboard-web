@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `trade-suite` meta-package delegates its research workflows to these same
   jobs, so a scripted run and a dashboard run agree exactly.
 - Seven new JSON API endpoints under `/api/research/`: `pairs`, `orderbook`,
-  `optimize`, `montecarlo`, `volsurface`, `factors`, `sentiment`.
+  `optimize`, `montecarlo`, `volsurface`, `factors`, `sentiment-price`
+  (`/api/research/sentiment` kept as a compatibility alias).
 - 14 new tests: 7 engine research-job tests + 7 live-server endpoint tests.
 
 ### Notes

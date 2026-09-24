@@ -18,7 +18,8 @@ JSON API:
     POST /api/research/optimize     {symbols[], source, days, method, max_weight}
     POST /api/research/montecarlo   {symbols[], weights[], source, days, equity, paths, steps, seed}
     POST /api/research/factors      {symbols[], source, days, model, months}
-    POST /api/research/sentiment     {symbol, source, days}
+    POST /api/research/sentiment-price {symbol, source, days}
+         (alias: /api/research/sentiment)
     POST /api/research/volsurface   {symbol, spot, risk_free}
 
 The single-page UI is served from ``web/static/``.
@@ -219,7 +220,7 @@ class _Handler(BaseHTTPRequestHandler):
             return run_factor_analysis_job(
                 symbols, bars, model=body.get("model", "ff5"),
                 n_months=int(body.get("months", 60)))
-        if name == "sentiment":
+        if name in ("sentiment", "sentiment-price"):
             symbol = (body.get("symbol") or "").strip().upper()
             return run_sentiment_price_job(
                 symbol, days=int(body.get("days", 180)))

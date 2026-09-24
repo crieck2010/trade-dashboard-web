@@ -59,7 +59,7 @@ POST /api/research/optimize     {"symbols[]","source","days","method","max_weigh
 POST /api/research/montecarlo   {"symbols[]","weights[]","source","days","equity","paths","steps","seed"}
 POST /api/research/volsurface   {"symbol","spot","risk_free"}
 POST /api/research/factors      {"symbols[]","source","days","model","months"}
-POST /api/research/sentiment    {"symbol","days"}
+POST /api/research/sentiment-price  {"symbol","days"}
 ```
 
 Example:
