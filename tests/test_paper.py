@@ -29,11 +29,13 @@ def cfg_path(tmp_path):
 
 
 def test_paper_available_flag():
+    pytest.importorskip("trade_paper")
     ok, _ = paper_available()
     assert ok  # trade-paper is installed in the test env
 
 
 def test_paper_status_fake_broker(cfg_path):
+    pytest.importorskip("trade_paper")
     s = paper_status(cfg_path)
     assert s["available"] and s["paper_only"]
     assert s["equity"] == 100000.0
@@ -42,7 +44,7 @@ def test_paper_status_fake_broker(cfg_path):
 
 
 def test_paper_approve_roundtrip(cfg_path):
-    import trade_paper
+    pytest.importorskip("trade_paper")
     from trade_paper.config import PaperConfig
     from trade_paper.ledger import Ledger
     from trade_paper.models import Discovery
@@ -64,5 +66,6 @@ def test_paper_approve_roundtrip(cfg_path):
 
 
 def test_paper_fidelity_empty(cfg_path):
+    pytest.importorskip("trade_paper")
     f = paper_fidelity(cfg_path)
     assert f["available"] and f["strategies"] == {}
