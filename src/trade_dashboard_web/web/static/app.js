@@ -72,7 +72,8 @@ function fmtCell(v) {
 // -- data tab ---------------------------------------------------------------
 async function loadSources() {
   const sources = await api("GET", "/api/sources");
-  for (const id of ["bt-source", "desk-source", "data-source"]) {
+  for (const id of ["bt-source", "desk-source", "data-source",
+                    "rs-pairs-source", "rs-opt-source", "rs-mc-source", "rs-fa-source"]) {
     const sel = $(id);
     sel.innerHTML = sources.map((s) =>
       `<option value="${esc(s.id)}"${s.available ? "" : " disabled"}>${esc(s.label)}${s.available ? "" : " (unavailable)"}</option>`).join("");
@@ -242,3 +243,85 @@ document.querySelector('[data-tab="paper"]').addEventListener("click", loadPaper
   try { await loadStrategies(); } catch (e) { $("strat-list").innerHTML = `<span class="hint">${esc(e.message)}</span>`; }
   loadRiskLimits();
 })();
+
+// -- research lab --------------------------------------------------------------
+document.querySelectorAll("#research-tabs button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#research-tabs button").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".rsub").forEach((t) => t.classList.remove("active"));
+    btn.classList.add("active");
+    $("rsub-" + btn.dataset.rsub).classList.add("active");
+  });
+});
+const rSyms = (id) => $(id).value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+const rMetrics = (el, obj) => { $(el).innerHTML = Object.entries(obj).map(
+  ([k, v]) => `<div class="metric"><span>${esc(k)}</span><b>${esc(fmtCell(v))}</b></div>`).join(""); };
+async function rRun(btn, errorId, fn) {
+  const b = $(btn); b.disabled = true; $(errorId).textContent = "";
+  try { await fn(); } catch (e) { $(errorId).textContent = e.message; }
+  b.disabled = false;
+}
+
+$("rs-pairs-run").addEventListener("click", () => rRun("rs-pairs-run", "rs-pairs-error", async () => {
+  const r = await api("POST", "/api/research/pairs", {
+    symbols: rSyms("rs-pairs-symbols"), source: $("rs-pairs-source").value,
+    lookback: +$("rs-pairs-lookback").value, max_pairs: 10});
+  $("rs-pairs-table").innerHTML = table(r.pairs.map((p) => ({
+    pair: `${p.symbol_a} / ${p.symbol_b}`, verdict: p.cointegrated ? "cointegrated" : "not",
+    adf_stat: p.adf.stat.toFixed(2), beta: p.hedge_ratio.toFixed(3),
+    half_life: p.half_life_bars == null ? "n/a" : p.half_life_bars.toFixed(1),
+  })), [["pair","pair"],["verdict","verdict"],["adf_stat","ADF stat"],["beta","beta"],["half_life","half-life bars"]]);
+}));
+
+$("rs-ob-run").addEventListener("click", () => rRun("rs-ob-run", "rs-ob-error", async () => {
+  const r = await api("POST", "/api/research/orderbook", {
+    symbol: "DEMO", side: $("rs-ob-side").value, quantity: +$("rs-ob-qty").value,
+    order_type: $("rs-ob-type").value, levels: 5});
+  rMetrics("rs-ob-metrics", {filled_qty: r.filled_qty, fill_ratio: r.fill_ratio,
+    avg_fill_price: r.avg_fill_price, slippage_bps: r.slippage_bps, n_fills: r.n_fills});
+}));
+
+$("rs-opt-run").addEventListener("click", () => rRun("rs-opt-run", "rs-opt-error", async () => {
+  const r = await api("POST", "/api/research/optimize", {
+    symbols: rSyms("rs-opt-symbols"), source: $("rs-opt-source").value,
+    method: $("rs-opt-method").value, max_weight: 1.0});
+  rMetrics("rs-opt-weights", {...r.weights, expected_return: r.expected_return,
+    volatility: r.volatility, sharpe: r.sharpe});
+  $("rs-opt-chart").innerHTML = lineChart(r.frontier.map((p) => p.expected_return));
+}));
+
+$("rs-mc-run").addEventListener("click", () => rRun("rs-mc-run", "rs-mc-error", async () => {
+  const r = await api("POST", "/api/research/montecarlo", {
+    symbols: rSyms("rs-mc-symbols"), source: $("rs-mc-source").value,
+    equity: +$("rs-mc-equity").value, paths: +$("rs-mc-paths").value, steps: 252, seed: 7});
+  rMetrics("rs-mc-metrics", {var: r.var, cvar: r.cvar, mean_pnl: r.mean_pnl,
+    p_profit: r.prob_profit, median_pnl: r.median_pnl, paths: r.n_paths});
+}));
+
+$("rs-vs-run").addEventListener("click", () => rRun("rs-vs-run", "rs-vs-error", async () => {
+  const r = await api("POST", "/api/research/volsurface", {symbol: $("rs-vs-symbol").value});
+  const rows = Object.entries(r.svi_fits).map(([T, f]) => ({T, ...f}));
+  $("rs-vs-table").innerHTML = table(rows,
+    [["T","expiry T"],["a","a"],["b","b"],["rho","rho"],["m","m"],["sigma","sigma"]]);
+}));
+
+$("rs-fa-run").addEventListener("click", () => rRun("rs-fa-run", "rs-fa-error", async () => {
+  const r = await api("POST", "/api/research/factors", {
+    symbols: rSyms("rs-fa-symbols"), source: $("rs-fa-source").value, days: 750,
+    model: $("rs-fa-model").value, months: 60});
+  const g = r.grs || {};
+  $("rs-fa-verdict").textContent =
+    `${r.model.toUpperCase()} · ${r.n_months} months\n` +
+    `GRS joint-alpha test: F=${(+g.F || 0).toFixed(2)}, p=${(+g.pvalue || 1).toFixed(4)} ` +
+    `(+g.pvalue < 0.05 ? "→ reject joint zero-alpha" : "→ cannot reject joint zero-alpha")`;
+  $("rs-fa-table").innerHTML = table(Object.entries(r.assets).map(([symbol, a]) => ({
+    symbol, alpha: a.alpha.toFixed(4), alpha_t: a.alpha_t.toFixed(2),
+    alpha_p: a.alpha_p.toFixed(3), r_squared: a.rsquared.toFixed(3),
+    sig_5pct: a.alpha_p < 0.05 ? "yes" : "no"})),
+    [["symbol","symbol"],["alpha","alpha"],["alpha_t","alpha t"],["alpha_p","alpha p"],["r_squared","R²"],["sig_5pct","sig 5%"]]);
+}));
+
+$("rs-se-run").addEventListener("click", () => rRun("rs-se-run", "rs-se-error", async () => {
+  const r = await api("POST", "/api/research/sentiment", {symbol: $("rs-se-symbol").value});
+  $("rs-se-verdict").textContent = JSON.stringify(r, null, 2);
+}));

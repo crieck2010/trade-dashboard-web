@@ -35,3 +35,12 @@ pre { background: #0c1220; padding: 10px; border-radius: 6px; overflow-x: auto; 
 footer { padding: 12px 20px; color: var(--mut); font-size: 12px; border-top: 1px solid var(--line); }
 svg.chart { width: 100%; height: 260px; background: #0c1220; border-radius: 6px; }
 .pos { color: var(--up); } .neg { color: var(--down); }
+
+.subtabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.subtabs button { background: #1c2740; border: 1px solid #2c3a5e; color: #c8d6f0; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.subtabs button.active { background: #2e4470; color: #fff; }
+.rsub { display: none; }
+.rsub.active { display: block; }
+.metric { background: #141c30; border: 1px solid #263150; border-radius: 8px; padding: 10px; }
+.metric span { display: block; font-size: 0.8em; color: #8fa3c8; }
+.metric b { font-size: 1.1em; }

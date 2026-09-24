@@ -10,6 +10,15 @@ from .paper_service import (
     paper_fidelity,
     paper_status,
 )
+from .research_service import (
+    run_factor_analysis_job,
+    run_montecarlo_job,
+    run_optimize_job,
+    run_orderbook_job,
+    run_pairs_job,
+    run_sentiment_price_job,
+    run_vol_surface_job,
+)
 from .risk_service import describe_limits, evaluate_orders_job
 from .strategy_service import describe_strategy, list_strategies
 
@@ -27,4 +36,11 @@ __all__ = [
     "paper_status",
     "run_backtest_job",
     "run_desk_job",
+    "run_factor_analysis_job",
+    "run_montecarlo_job",
+    "run_optimize_job",
+    "run_orderbook_job",
+    "run_pairs_job",
+    "run_sentiment_price_job",
+    "run_vol_surface_job",
 ]

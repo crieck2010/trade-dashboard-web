@@ -111,3 +111,65 @@ def test_risk_evaluate_endpoint(base_url):
 def test_unknown_endpoint(base_url):
     status, _ = post(base_url, "/api/nope", {})
     assert status == 404
+
+
+# -- research lab endpoints ----------------------------------------------------
+
+def _post_research(base_url, name, payload):
+    pytest.importorskip("trade_pairs" if name == "pairs" else
+                        "trade_orderbook" if name == "orderbook" else
+                        "trade_optimize" if name == "optimize" else
+                        "trade_montecarlo" if name == "montecarlo" else
+                        "trade_volsurface" if name == "volsurface" else
+                        "trade_factors" if name == "factors" else
+                        "trade_sentiment_vs_price")
+    return post(base_url, f"/api/research/{name}", payload)
+
+
+def test_research_pairs_endpoint(base_url):
+    status, data = _post_research(base_url, "pairs", {
+        "symbols": ["SPY", "QQQ", "IWM"], "source": "demo", "days": 200,
+        "lookback": 100, "max_pairs": 3})
+    assert status == 200 and data["source"] == "trade-pairs"
+
+
+def test_research_orderbook_endpoint(base_url):
+    status, data = _post_research(base_url, "orderbook",
+                                  {"side": "sell", "quantity": 50, "order_type": "market", "levels": 5})
+    assert status == 200 and data["source"] == "trade-orderbook"
+
+
+def test_research_optimize_endpoint(base_url):
+    status, data = _post_research(base_url, "optimize", {
+        "symbols": ["SPY", "QQQ"], "source": "demo", "days": 200, "method": "equal_weight"})
+    assert status == 200 and data["source"] == "trade-optimize"
+
+
+def test_research_montecarlo_endpoint(base_url):
+    status, data = _post_research(base_url, "montecarlo", {
+        "symbols": ["SPY", "QQQ"], "source": "demo", "days": 200,
+        "equity": 100000, "paths": 200, "steps": 60, "seed": 7})
+    assert status == 200 and data["source"] == "trade-montecarlo"
+
+
+def test_research_volsurface_endpoint(base_url):
+    status, data = _post_research(base_url, "volsurface", {"symbol": "SPY"})
+    assert status == 200 and data["source"] == "trade-volsurface"
+
+
+def test_research_factors_endpoint(base_url):
+    status, data = _post_research(base_url, "factors", {
+        "symbols": ["SPY", "QQQ"], "source": "demo", "model": "ff3", "months": 24})
+    assert status == 200 and data["source"] == "trade-factors"
+
+
+def test_research_sentiment_endpoint(base_url):
+    status, data = _post_research(base_url, "sentiment", {"symbol": "SPY"})
+    assert status == 200 and data["source"] == "trade-sentiment-vs-price"
+
+
+def test_research_index_has_tab(base_url):
+    import urllib.request
+    with urllib.request.urlopen(base_url + "/") as res:
+        html = res.read().decode()
+    assert "Research Lab" in html and "rs-pairs-run" in html

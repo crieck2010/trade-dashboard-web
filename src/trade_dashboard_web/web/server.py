@@ -13,6 +13,13 @@ JSON API:
     GET  /api/paper/approvals?config=&status=pending
     POST /api/paper/approve  {config, id, reason}
     GET  /api/paper/fidelity?config=paper-config.json
+    POST /api/research/pairs        {symbols[], source, days, lookback, max_pairs}
+    POST /api/research/orderbook    {symbol, side, quantity, order_type, levels}
+    POST /api/research/optimize     {symbols[], source, days, method, max_weight}
+    POST /api/research/montecarlo   {symbols[], weights[], source, days, equity, paths, steps, seed}
+    POST /api/research/factors      {symbols[], source, days, model, months}
+    POST /api/research/sentiment     {symbol, source, days}
+    POST /api/research/volsurface   {symbol, spot, risk_free}
 
 The single-page UI is served from ``web/static/``.
 """
@@ -38,6 +45,13 @@ from ..engine import (
     paper_status,
     run_backtest_job,
     run_desk_job,
+    run_factor_analysis_job,
+    run_montecarlo_job,
+    run_optimize_job,
+    run_orderbook_job,
+    run_pairs_job,
+    run_sentiment_price_job,
+    run_vol_surface_job,
 )
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -126,6 +140,8 @@ class _Handler(BaseHTTPRequestHandler):
                     body.get("config", ""),
                     int(body.get("id", 0)),
                     reason=body.get("reason", "")))
+            if path.startswith("/api/research/"):
+                return self._json(self._research(path.rsplit("/", 1)[1], body))
             return self._error(f"unknown endpoint {path}", 404)
         except (ValueError, KeyError, RuntimeError) as exc:
             return self._error(str(exc), 400)
@@ -161,6 +177,58 @@ class _Handler(BaseHTTPRequestHandler):
         return run_desk_job(
             symbols, bars_by_symbol, equity=float(body.get("equity", 100_000.0))
         )
+
+    def _bars_many(self, body: dict, default_days: int = 365) -> tuple[list[str], dict[str, list]]:
+        symbols = [s.strip().upper() for s in body.get("symbols", []) if s.strip()]
+        source = body.get("source", "demo")
+        days = int(body.get("days", default_days))
+        return symbols, {
+            s: self.data_service.get_bars(s, source=source, days=days)
+            for s in symbols
+        }
+
+    def _research(self, name: str, body: dict) -> dict:
+        if name == "pairs":
+            symbols, bars = self._bars_many(body)
+            return run_pairs_job(symbols, bars,
+                                 lookback=int(body.get("lookback", 252)),
+                                 max_pairs=int(body.get("max_pairs", 10)))
+        if name == "orderbook":
+            return run_orderbook_job(
+                symbol=body.get("symbol", "DEMO"), side=body.get("side", "buy"),
+                quantity=float(body.get("quantity", 100.0)),
+                order_type=body.get("order_type", "market"),
+                n_levels=int(body.get("levels", 5)))
+        if name == "optimize":
+            symbols, bars = self._bars_many(body)
+            return run_optimize_job(symbols, bars,
+                                    method=body.get("method", "max_sharpe"),
+                                    max_weight=float(body.get("max_weight", 1.0)))
+        if name == "montecarlo":
+            symbols, bars = self._bars_many(body)
+            weights = body.get("weights") or None
+            return run_montecarlo_job(
+                symbols, bars,
+                weights=[float(w) for w in weights] if weights else None,
+                equity=float(body.get("equity", 100_000.0)),
+                n_paths=int(body.get("paths", 5_000)),
+                n_steps=int(body.get("steps", 252)),
+                seed=int(body.get("seed", 7)))
+        if name == "factors":
+            symbols, bars = self._bars_many(body, default_days=750)
+            return run_factor_analysis_job(
+                symbols, bars, model=body.get("model", "ff5"),
+                n_months=int(body.get("months", 60)))
+        if name == "sentiment":
+            symbol = (body.get("symbol") or "").strip().upper()
+            return run_sentiment_price_job(
+                symbol, days=int(body.get("days", 180)))
+        if name == "volsurface":
+            return run_vol_surface_job(
+                symbol=body.get("symbol", "SPY"),
+                spot=body.get("spot"),
+                risk_free=float(body.get("risk_free", 0.03)))
+        raise KeyError(f"unknown research job {name!r}")
 
     # -- static files -------------------------------------------------------
     def _serve_static(self, path: str):

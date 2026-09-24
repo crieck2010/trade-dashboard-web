@@ -36,6 +36,7 @@ synthetic demo data source.
 | **Risk** | List `trade-risk` limits and evaluate your own orders against a limit stack (cumulative fills) |
 | **Paper** | Paper-trading monitor (needs the `trade-paper` engine): account/equity, positions, recent orders, strategy-approval queue with approve button, backtest-vs-paper fidelity |
 | **Data** | Fetch bars (demo or delayed equities via `trade-data-equities`) and view a candlestick chart |
+| **Research Lab** | Seven quant-engine panels: pairs screening, order-book simulation, portfolio optimization, Monte Carlo VaR, vol-surface fitting, factor analysis, sentiment-vs-price — plain-data results rendered as tables/metrics/charts |
 
 ## JSON API
 
@@ -52,6 +53,13 @@ GET  /api/paper/status?config=paper-config.json
 GET  /api/paper/approvals?config=&status=pending
 POST /api/paper/approve   {"config","id","reason"}
 GET  /api/paper/fidelity?config=paper-config.json
+POST /api/research/pairs        {"symbols[]","source","days","lookback","max_pairs"}
+POST /api/research/orderbook    {"symbol","side","quantity","order_type","levels"}
+POST /api/research/optimize     {"symbols[]","source","days","method","max_weight"}
+POST /api/research/montecarlo   {"symbols[]","weights[]","source","days","equity","paths","steps","seed"}
+POST /api/research/volsurface   {"symbol","spot","risk_free"}
+POST /api/research/factors      {"symbols[]","source","days","model","months"}
+POST /api/research/sentiment    {"symbol","days"}
 ```
 
 Example:
@@ -73,6 +81,7 @@ src/trade_dashboard_web/
     backtest_service.py  # run backtests -> metrics, equity curve, trades
     desk_service.py      # run the agent desk -> report dict
     risk_service.py      # evaluate orders against limit stacks
+    research_service.py  # 7 research-lab jobs, one per quant engine (plain in/out)
   web/
     server.py        # thin stdlib-HTTP layer: routing + JSON API + static files
     static/          # index.html, styles.css, app.js (vanilla JS, SVG charts)
@@ -82,11 +91,18 @@ src/trade_dashboard_web/
 The engine modules are independently importable and testable without
 starting the server; the web layer is a thin translation to HTTP.
 
+Interoperability: `engine/research_service.py` is the canonical
+implementation of the seven research jobs. The `trade-suite` meta-package's
+research workflows delegate to these same `run_*_job` functions, and the
+desktop dashboard binds its service names to this module whenever the web
+package is installed — so a CLI run, a scripted run, the web dashboard, and
+the desktop dashboard all execute the identical code path.
+
 ## Scaling notes
 
-- `ThreadingHTTPServer` handles concurrent requests; backtest and desk
-  runs are CPU-bound and run inline — for heavy use, put a reverse proxy
-  in front and/or move long runs to a task queue.
+- `ThreadingHTTPServer` handles concurrent requests; backtest, desk, and
+  Monte Carlo runs are CPU-bound and run inline — for heavy use, put a
+  reverse proxy in front and/or move long runs to a task queue.
 - Engine functions take plain data and return plain data, so they can be
   reused from scripts, notebooks, or the desktop dashboard unchanged.
 
@@ -96,6 +112,13 @@ starting the server; the web layer is a thin translation to HTTP.
   delayed) data before trusting them.
 - The equities source needs `trade-data-equities` and `yfinance`
   installed; without them the dashboard falls back to demo data.
+- Research Lab demo caveats: the vol-surface fitter runs on the engine's
+  synthetic quote set (real chains plug in via `from_option_chain`);
+  factor regressions run on synthetic monthly factors whose date labels
+  are synthetic (real factors via `load_french_csv`); sentiment-vs-price
+  uses synthetic data with a planted 1-day sentiment lead (real rows via
+  archived trade-sentiment scans, which are snapshot-based). The factors
+  panel needs ≥24 monthly returns per symbol (up to 750 demo bars).
 - Single-process server: fine for personal research, not a production
   deployment target.
 

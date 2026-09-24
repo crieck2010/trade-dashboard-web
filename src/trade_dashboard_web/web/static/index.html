@@ -16,6 +16,7 @@
     <button data-tab="risk">Risk</button>
     <button data-tab="paper">Paper</button>
     <button data-tab="data">Data</button>
+    <button data-tab="research">Research Lab</button>
   </nav>
 </header>
 <main>
@@ -93,6 +94,101 @@
     </div>
     <div id="data-error" class="error"></div>
     <div class="card"><h3>Price</h3><div id="data-chart"></div><div id="data-info" class="hint"></div></div>
+  </section>
+
+  <section id="tab-research" class="tab">
+    <nav id="research-tabs" class="subtabs">
+      <button data-rsub="pairs" class="active">Pairs</button>
+      <button data-rsub="orderbook">Order book</button>
+      <button data-rsub="optimize">Optimize</button>
+      <button data-rsub="montecarlo">Monte Carlo</button>
+      <button data-rsub="volsurface">Vol surface</button>
+      <button data-rsub="factors">Factors</button>
+      <button data-rsub="sentiment">Sentiment</button>
+    </nav>
+
+    <div id="rsub-pairs" class="rsub active">
+      <div class="card form">
+        <label>Symbols (comma-separated) <input id="rs-pairs-symbols" value="SPY, QQQ, IWM, DIA"></label>
+        <label>Source <select id="rs-pairs-source"></select></label>
+        <label>Lookback <input id="rs-pairs-lookback" type="number" value="252"></label>
+        <button id="rs-pairs-run">Screen pairs</button>
+        <span class="hint">trade-pairs · Engle-Granger cointegration</span>
+      </div>
+      <div id="rs-pairs-error" class="error"></div>
+      <div class="card"><h3>Candidates</h3><div id="rs-pairs-table" class="tablewrap"></div></div>
+    </div>
+
+    <div id="rsub-orderbook" class="rsub">
+      <div class="card form">
+        <label>Side <select id="rs-ob-side"><option>buy</option><option>sell</option></select></label>
+        <label>Quantity <input id="rs-ob-qty" type="number" value="100"></label>
+        <label>Type <select id="rs-ob-type"><option>market</option><option>limit</option></select></label>
+        <button id="rs-ob-run">Simulate</button>
+        <span class="hint">trade-orderbook · seeded 5-level book @ 100.00</span>
+      </div>
+      <div id="rs-ob-error" class="error"></div>
+      <div class="card"><h3>Fill quality</h3><div id="rs-ob-metrics" class="metrics"></div></div>
+    </div>
+
+    <div id="rsub-optimize" class="rsub">
+      <div class="card form">
+        <label>Symbols (comma-separated) <input id="rs-opt-symbols" value="SPY, QQQ, IWM"></label>
+        <label>Source <select id="rs-opt-source"></select></label>
+        <label>Method <select id="rs-opt-method"><option>max_sharpe</option><option>min_variance</option><option>risk_parity</option><option>equal_weight</option></select></label>
+        <button id="rs-opt-run">Optimize</button>
+        <span class="hint">trade-optimize · Markowitz, long-only</span>
+      </div>
+      <div id="rs-opt-error" class="error"></div>
+      <div class="card"><h3>Weights</h3><div id="rs-opt-weights" class="metrics"></div></div>
+      <div class="card"><h3>Efficient frontier</h3><div id="rs-opt-chart"></div></div>
+    </div>
+
+    <div id="rsub-montecarlo" class="rsub">
+      <div class="card form">
+        <label>Symbols (comma-separated) <input id="rs-mc-symbols" value="SPY, QQQ"></label>
+        <label>Source <select id="rs-mc-source"></select></label>
+        <label>Paths <input id="rs-mc-paths" type="number" value="2000"></label>
+        <label>Equity <input id="rs-mc-equity" type="number" value="100000"></label>
+        <button id="rs-mc-run">Simulate</button>
+        <span class="hint">trade-montecarlo · correlated GBM VaR</span>
+      </div>
+      <div id="rs-mc-error" class="error"></div>
+      <div class="card"><h3>Risk</h3><div id="rs-mc-metrics" class="metrics"></div></div>
+    </div>
+
+    <div id="rsub-volsurface" class="rsub">
+      <div class="card form">
+        <label>Symbol <input id="rs-vs-symbol" value="SPY"></label>
+        <button id="rs-vs-run">Fit surface</button>
+        <span class="hint">trade-volsurface · SVI fits, demo quotes</span>
+      </div>
+      <div id="rs-vs-error" class="error"></div>
+      <div class="card"><h3>SVI fits by expiry</h3><div id="rs-vs-table" class="tablewrap"></div></div>
+    </div>
+
+    <div id="rsub-factors" class="rsub">
+      <div class="card form">
+        <label>Symbols (comma-separated) <input id="rs-fa-symbols" value="SPY, QQQ"></label>
+        <label>Source <select id="rs-fa-source"></select></label>
+        <label>Model <select id="rs-fa-model"><option>ff5</option><option>ff3</option><option>carhart</option></select></label>
+        <button id="rs-fa-run">Analyze</button>
+        <span class="hint">trade-factors · Fama-French regressions, demo factors</span>
+      </div>
+      <div id="rs-fa-error" class="error"></div>
+      <div class="card"><h3>Verdict</h3><pre id="rs-fa-verdict"></pre></div>
+      <div class="card"><h3>Regressions</h3><div id="rs-fa-table" class="tablewrap"></div></div>
+    </div>
+
+    <div id="rsub-sentiment" class="rsub">
+      <div class="card form">
+        <label>Symbol <input id="rs-se-symbol" value="SPY"></label>
+        <button id="rs-se-run">Analyze</button>
+        <span class="hint">trade-sentiment-vs-price · demo data, 1-day lead planted</span>
+      </div>
+      <div id="rs-se-error" class="error"></div>
+      <div class="card"><h3>Verdict</h3><pre id="rs-se-verdict"></pre></div>
+    </div>
   </section>
 </main>
 <footer>trade-dashboard-web · research &amp; backtesting only — not investment advice</footer>
