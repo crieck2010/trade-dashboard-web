@@ -19,7 +19,7 @@ engine of record; this repo owns services, HTTP routes, and presentation.
 │    POST /api/desk        agent-desk run                            │
 │    POST /api/risk/...    risk review                               │
 │    POST /api/paper/...   paper-trading monitor                     │
-│    POST /api/research/*  seven quant-engine jobs (see below)       │
+│    POST /api/research/*  eight quant-engine jobs (see below)       │
 │                                                                    │
 │  engine/                 pure-logic service layer                   │
 │    research_service.py   canonical research jobs — the single      │
@@ -49,9 +49,9 @@ engine of record; this repo owns services, HTTP routes, and presentation.
   signatures** (`USING_SHARED_ENGINE` flags which is active). This keeps
   one contract with two deployments: hosted web and standalone desktop.
 
-## The research-lab pattern (0.2.0)
+## The research-lab pattern (0.2.0, extended 0.3.0)
 
-Each of the seven quant engines is exposed the same way:
+Each of the eight quant engines is exposed the same way:
 
 1. One canonical job in `engine/research_service.py`, e.g.
    `run_pairs_job(symbols, bars_by_symbol, ...)`.
@@ -76,6 +76,7 @@ Endpoints (canonical):
 | `POST /api/research/volsurface` | trade-volsurface |
 | `POST /api/research/factors` | trade-factors |
 | `POST /api/research/sentiment-price` | trade-sentiment-vs-price |
+| `POST /api/research/correlation` | trade-eda |
 
 `/api/research/sentiment` is kept as a compatibility alias for
 `sentiment-price`.

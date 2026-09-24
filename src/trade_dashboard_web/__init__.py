@@ -6,4 +6,4 @@ the thin HTTP layer lives in :mod:`trade_dashboard_web.web`.
 Launch with ``python -m trade_dashboard_web``.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

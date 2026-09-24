@@ -372,3 +372,42 @@ def run_sentiment_price_job(
     else:
         sent, prices = tsvp.demo_data(n_days=days, symbol=symbol, seed=seed)
     return tsvp.to_agent_report(symbol, sent, prices)
+
+
+# ---------------------------------------------------------------------------
+# Correlation / EDA
+# ---------------------------------------------------------------------------
+
+def run_correlation_job(
+    symbols: list[str],
+    bars_by_symbol: dict[str, list],
+    method: str = "pearson",
+    shrinkage: str = "ledoit_wolf",
+    lookback: int = 252,
+) -> dict:
+    """Correlation/EDA report over a symbol universe (trade-eda).
+
+    Full bar dicts are passed through (volume/timestamp feed the
+    data-quality section); series are truncated to the common length,
+    oldest-first, so ragged universes still work.
+    """
+    if method not in ("pearson", "spearman"):
+        raise ValueError("method must be 'pearson' or 'spearman'")
+    te = _require("trade-eda", "trade_eda")
+    norm: dict[str, list] = {}
+    for s, bs in bars_by_symbol.items():
+        key = (s or "").strip().upper()
+        if key:
+            norm[key] = list(bs)
+    syms = _clean_symbols(symbols)
+    missing = [s for s in syms if s not in norm]
+    if missing:
+        raise ValueError(f"no bars for {', '.join(missing)}")
+    if len(syms) < 2:
+        raise ValueError("need at least two symbols")
+    m = min(len(norm[s]) for s in syms)
+    lb = min(lookback, m)
+    if lb < 30:
+        raise ValueError(f"need >= 30 bars per symbol, have {lb}")
+    bars = {s: norm[s][-lb:] for s in syms}
+    return te.analyze(bars, method=method, shrinkage=shrinkage)

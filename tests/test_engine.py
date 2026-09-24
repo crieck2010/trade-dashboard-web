@@ -155,3 +155,21 @@ def test_research_sentiment_price_job():
     r = run_sentiment_price_job("SPY", days=180)
     assert r["source"] == "trade-sentiment-vs-price"
     assert r["lead_lag"]["best_lag"] == 1  # planted lead recovered
+
+
+def test_research_correlation_job():
+    _need("trade_eda")
+    from trade_dashboard_web.engine import run_correlation_job
+    bars = _bars(("SPY", "QQQ", "IWM", "DIA"), days=300)
+    r = run_correlation_job(["SPY", "QQQ", "IWM", "DIA"], bars,
+                            method="pearson", lookback=200)
+    assert r["source"] == "trade-eda"
+    assert r["symbols"] == ["DIA", "IWM", "QQQ", "SPY"]
+    assert r["n_obs"] == 199
+    assert len(r["correlation"]["matrix"]) == 4
+    assert r["diversification"]["effective_n_equal_weight"] <= 4
+    assert set(r["describe"]) == {"DIA", "IWM", "QQQ", "SPY"}
+    with pytest.raises(ValueError):
+        run_correlation_job(["SPY"], bars)
+    with pytest.raises(ValueError):
+        run_correlation_job(["SPY", "QQQ"], bars, method="bogus")

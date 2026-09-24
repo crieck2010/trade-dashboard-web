@@ -73,7 +73,8 @@ function fmtCell(v) {
 async function loadSources() {
   const sources = await api("GET", "/api/sources");
   for (const id of ["bt-source", "desk-source", "data-source",
-                    "rs-pairs-source", "rs-opt-source", "rs-mc-source", "rs-fa-source"]) {
+                    "rs-pairs-source", "rs-opt-source", "rs-mc-source", "rs-fa-source",
+                    "rs-co-source"]) {
     const sel = $(id);
     sel.innerHTML = sources.map((s) =>
       `<option value="${esc(s.id)}"${s.available ? "" : " disabled"}>${esc(s.label)}${s.available ? "" : " (unavailable)"}</option>`).join("");
@@ -324,4 +325,43 @@ $("rs-fa-run").addEventListener("click", () => rRun("rs-fa-run", "rs-fa-error", 
 $("rs-se-run").addEventListener("click", () => rRun("rs-se-run", "rs-se-error", async () => {
   const r = await api("POST", "/api/research/sentiment-price", {symbol: $("rs-se-symbol").value});
   $("rs-se-verdict").textContent = JSON.stringify(r, null, 2);
+}));
+
+function corrHeatmap(symbols, matrix) {
+  let s = "<table><tr><th></th>" + symbols.map((x) => `<th>${esc(x)}</th>`).join("") + "</tr>";
+  matrix.forEach((row, i) => {
+    s += `<tr><th>${esc(symbols[i])}</th>` + row.map((v) => {
+      const a = Math.min(Math.abs(v) * 0.85, 0.85).toFixed(2);
+      const bg = v >= 0 ? `rgba(63,208,140,${a})` : `rgba(255,107,107,${a})`;
+      return `<td style="background:${bg}">${v.toFixed(2)}</td>`;
+    }).join("") + "</tr>";
+  });
+  return s + "</table>";
+}
+
+$("rs-co-run").addEventListener("click", () => rRun("rs-co-run", "rs-co-error", async () => {
+  const r = await api("POST", "/api/research/correlation", {
+    symbols: rSyms("rs-co-symbols"), source: $("rs-co-source").value,
+    method: $("rs-co-method").value, shrinkage: $("rs-co-shrinkage").value,
+    lookback: +$("rs-co-lookback").value});
+  const hi = r.diversification.max_pairwise_corr;
+  rMetrics("rs-co-metrics", {
+    n_symbols: r.symbols.length, n_obs: r.n_obs,
+    mean_pairwise_corr: r.diversification.mean_pairwise_corr,
+    max_pair: `${hi.a}/${hi.b} = ${hi.value.toFixed(3)}`,
+    effective_n: r.diversification.effective_n_equal_weight,
+    shrinkage_delta: r.covariance.shrinkage_delta});
+  $("rs-co-matrix").innerHTML = corrHeatmap(r.symbols, r.correlation.matrix);
+  $("rs-co-describe").innerHTML = table(Object.entries(r.describe).map(([s, d]) => ({
+    symbol: s, n: d.n, mean_ann: d.mean_annualized, vol_ann: d.vol_annualized,
+    skew: d.skew, kurt: d.kurtosis_excess, jb: d.jarque_bera})),
+    [["symbol", "Symbol"], ["n", "n"], ["mean_ann", "Mean (ann)"], ["vol_ann", "Vol (ann)"],
+     ["skew", "Skew"], ["kurt", "Ex. kurt"], ["jb", "JB"]]);
+  $("rs-co-quality").innerHTML = table(Object.entries(r.quality).map(([s, q]) => ({
+    symbol: s, n_bars: q.n_bars, missing: q.missing_closes,
+    zero_vol: q.zero_volume_bars, stale: q.stale_close_runs,
+    outliers: q.price_outliers_mad, clean: q.clean ? "yes" : "NO"})),
+    [["symbol", "Symbol"], ["n_bars", "Bars"], ["missing", "Missing"],
+     ["zero_vol", "Zero vol"], ["stale", "Stale runs"], ["outliers", "Outliers"],
+     ["clean", "Clean"]]);
 }));

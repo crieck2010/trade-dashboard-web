@@ -36,7 +36,7 @@ synthetic demo data source.
 | **Risk** | List `trade-risk` limits and evaluate your own orders against a limit stack (cumulative fills) |
 | **Paper** | Paper-trading monitor (needs the `trade-paper` engine): account/equity, positions, recent orders, strategy-approval queue with approve button, backtest-vs-paper fidelity |
 | **Data** | Fetch bars (demo or delayed equities via `trade-data-equities`) and view a candlestick chart |
-| **Research Lab** | Seven quant-engine panels: pairs screening, order-book simulation, portfolio optimization, Monte Carlo VaR, vol-surface fitting, factor analysis, sentiment-vs-price — plain-data results rendered as tables/metrics/charts |
+| **Research Lab** | Eight quant-engine panels: pairs screening, order-book simulation, portfolio optimization, Monte Carlo VaR, vol-surface fitting, factor analysis, sentiment-vs-price, correlation/EDA — plain-data results rendered as tables/metrics/charts |
 
 ## JSON API
 
@@ -60,6 +60,7 @@ POST /api/research/montecarlo   {"symbols[]","weights[]","source","days","equity
 POST /api/research/volsurface   {"symbol","spot","risk_free"}
 POST /api/research/factors      {"symbols[]","source","days","model","months"}
 POST /api/research/sentiment-price  {"symbol","days"}
+POST /api/research/correlation     {"symbols[]","source","days","method","shrinkage","lookback"}
 ```
 
 Example:
@@ -81,7 +82,7 @@ src/trade_dashboard_web/
     backtest_service.py  # run backtests -> metrics, equity curve, trades
     desk_service.py      # run the agent desk -> report dict
     risk_service.py      # evaluate orders against limit stacks
-    research_service.py  # 7 research-lab jobs, one per quant engine (plain in/out)
+    research_service.py  # 8 research-lab jobs, one per quant engine (plain in/out)
   web/
     server.py        # thin stdlib-HTTP layer: routing + JSON API + static files
     static/          # index.html, styles.css, app.js (vanilla JS, SVG charts)

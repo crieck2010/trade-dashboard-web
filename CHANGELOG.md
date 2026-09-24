@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-09-24
+
+### Added
+- Eighth **Research Lab** panel: **Correlations** (trade-eda) — Pearson/
+  Spearman correlation heatmap, Ledoit-Wolf shrunk covariance, per-asset
+  summary stats (vol, skew, kurtosis, Jarque-Bera), data-quality flags,
+  and diversification stats (mean/max pairwise correlation, effective
+  number of bets).
+- `run_correlation_job` in `engine/research_service.py` (canonical,
+  plain-data, lazy `trade-eda` import) and
+  `POST /api/research/correlation`
+  (`{symbols[], source, days, method, shrinkage, lookback}`).
+- 2 new tests: engine research-job test + live-server endpoint test.
+
 ## [0.2.0] - 2026-09-24
 
 ### Added

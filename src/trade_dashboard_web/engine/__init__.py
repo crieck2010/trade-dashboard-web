@@ -11,6 +11,7 @@ from .paper_service import (
     paper_status,
 )
 from .research_service import (
+    run_correlation_job,
     run_factor_analysis_job,
     run_montecarlo_job,
     run_optimize_job,
@@ -35,6 +36,7 @@ __all__ = [
     "paper_fidelity",
     "paper_status",
     "run_backtest_job",
+    "run_correlation_job",
     "run_desk_job",
     "run_factor_analysis_job",
     "run_montecarlo_job",

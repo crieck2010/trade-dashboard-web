@@ -21,6 +21,7 @@ JSON API:
     POST /api/research/sentiment-price {symbol, source, days}
          (alias: /api/research/sentiment)
     POST /api/research/volsurface   {symbol, spot, risk_free}
+    POST /api/research/correlation  {symbols[], source, days, method, shrinkage, lookback}
 
 The single-page UI is served from ``web/static/``.
 """
@@ -45,6 +46,7 @@ from ..engine import (
     paper_fidelity,
     paper_status,
     run_backtest_job,
+    run_correlation_job,
     run_desk_job,
     run_factor_analysis_job,
     run_montecarlo_job,
@@ -229,6 +231,13 @@ class _Handler(BaseHTTPRequestHandler):
                 symbol=body.get("symbol", "SPY"),
                 spot=body.get("spot"),
                 risk_free=float(body.get("risk_free", 0.03)))
+        if name == "correlation":
+            symbols, bars = self._bars_many(body)
+            return run_correlation_job(
+                symbols, bars,
+                method=body.get("method", "pearson"),
+                shrinkage=body.get("shrinkage", "ledoit_wolf"),
+                lookback=int(body.get("lookback", 252)))
         raise KeyError(f"unknown research job {name!r}")
 
     # -- static files -------------------------------------------------------

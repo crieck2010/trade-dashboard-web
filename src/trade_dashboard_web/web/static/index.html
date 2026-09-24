@@ -105,6 +105,7 @@
       <button data-rsub="volsurface">Vol surface</button>
       <button data-rsub="factors">Factors</button>
       <button data-rsub="sentiment">Sentiment</button>
+      <button data-rsub="correlation">Correlations</button>
     </nav>
 
     <div id="rsub-pairs" class="rsub active">
@@ -188,6 +189,23 @@
       </div>
       <div id="rs-se-error" class="error"></div>
       <div class="card"><h3>Verdict</h3><pre id="rs-se-verdict"></pre></div>
+    </div>
+
+    <div id="rsub-correlation" class="rsub">
+      <div class="card form">
+        <label>Symbols (comma-separated) <input id="rs-co-symbols" value="SPY, QQQ, IWM, DIA"></label>
+        <label>Source <select id="rs-co-source"></select></label>
+        <label>Method <select id="rs-co-method"><option>pearson</option><option>spearman</option></select></label>
+        <label>Shrinkage <select id="rs-co-shrinkage"><option>ledoit_wolf</option><option>sample</option></select></label>
+        <label>Lookback <input id="rs-co-lookback" type="number" value="252"></label>
+        <button id="rs-co-run">Analyze</button>
+        <span class="hint">trade-eda · correlation matrix, shrunk covariance, EDA</span>
+      </div>
+      <div id="rs-co-error" class="error"></div>
+      <div class="card"><h3>Diversification</h3><div id="rs-co-metrics" class="metrics"></div></div>
+      <div class="card"><h3>Correlation matrix</h3><div id="rs-co-matrix" class="tablewrap"></div></div>
+      <div class="card"><h3>Per-asset stats</h3><div id="rs-co-describe" class="tablewrap"></div></div>
+      <div class="card"><h3>Data quality</h3><div id="rs-co-quality" class="tablewrap"></div></div>
     </div>
   </section>
 </main>

@@ -122,6 +122,7 @@ def _post_research(base_url, name, payload):
                         "trade_montecarlo" if name == "montecarlo" else
                         "trade_volsurface" if name == "volsurface" else
                         "trade_factors" if name == "factors" else
+                        "trade_eda" if name == "correlation" else
                         "trade_sentiment_vs_price")
     return post(base_url, f"/api/research/{name}", payload)
 
@@ -171,6 +172,15 @@ def test_research_sentiment_endpoint(base_url):
 def test_research_sentiment_alias_endpoint(base_url):
     status, data = _post_research(base_url, "sentiment", {"symbol": "SPY"})
     assert status == 200 and data["source"] == "trade-sentiment-vs-price"
+
+
+def test_research_correlation_endpoint(base_url):
+    status, data = _post_research(base_url, "correlation", {
+        "symbols": ["SPY", "QQQ", "IWM"], "source": "demo", "days": 200,
+        "method": "pearson", "lookback": 100})
+    assert status == 200 and data["source"] == "trade-eda"
+    assert len(data["correlation"]["matrix"]) == 3
+    assert data["n_obs"] == 99
 
 
 def test_research_index_has_tab(base_url):
